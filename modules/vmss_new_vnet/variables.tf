@@ -42,12 +42,21 @@ variable "maintenance_mode_password_hash" {
 }
 
 variable "availability_zones_num" {
-  description = "The number of availability zones to use for Scale Set. Note that the load balancers and their IP addresses will be redundant in any case."
-  type = number
-  validation {
-    condition = contains([0, 1, 2, 3], var.availability_zones_num)
-    error_message = "The availability_zones_num must be one of the following values: 0, 1, 2, 3."
-  }
+  description = "The number of availability zones to use for Scale Set. Note that the load balancers and their IP addresses will be redundant in any case"
+  #Availability Zones are only supported in several regions at this time
+  #"centralus", "eastus2", "francecentral", "northeurope", "southeastasia", "westeurope", "westus2", "eastus", "uksouth"
+  #type = list(string)
+}
+
+locals { // locals for 'availability_zones_num' allowed values
+  availability_zones_num_allowed_values = [
+    "0",
+    "1",
+    "2",
+    "3"
+  ]
+  // will fail if [var.availability_zones_num] is invalid:
+  validate_availability_zones_num_value = index(local.availability_zones_num_allowed_values, var.availability_zones_num)
 }
 
 variable "sic_key" {
@@ -56,18 +65,6 @@ variable "sic_key" {
 }
 resource "null_resource" "sic_key_invalid" {
   count = length(var.sic_key) >= 12 ? 0 : "SIC key must be at least 12 characters long"
-}
-
-variable "template_name"{
-  description = "Template name. Should be defined according to deployment type(ha, vmss)"
-  type = string
-  default = "vmss-terraform"
-}
-
-variable "template_version"{
-  description = "Template version. It is recommended to always use the latest template version"
-  type = string
-  default = "20230910"
 }
 
 variable "installation_type"{
@@ -105,7 +102,6 @@ variable "os_version" {
 
 locals { // locals for 'vm_os_offer' allowed values
   os_version_allowed_values = [
-    "R81",
     "R8110",
     "R8120",
     "R82"
@@ -318,13 +314,12 @@ locals { // locals for 'frontend_load_distribution' allowed values
 //********************** Scale Set variables *******************//
 
 variable "vm_os_offer" {
-  description = "The name of the offer of the image that you want to deploy.Choose from:  check-point-cg-r81, check-point-cg-r8110, check-point-cg-r8120, check-point-cg-r82"
+  description = "The name of the offer of the image that you want to deploy.Choose from:  check-point-cg-r8110, check-point-cg-r8120, check-point-cg-r82"
   type = string
 }
 
 locals { // locals for 'vm_os_offer' allowed values
   vm_os_offer_allowed_values = [
-    "check-point-cg-r81",
     "check-point-cg-r8110",
     "check-point-cg-r8120",
     "check-point-cg-r82"
@@ -344,27 +339,6 @@ variable "notification_email" {
   type = string
 }
 
-//********************** Credentials **************************//
-variable "tenant_id" {
-  description = "Tenant ID"
-  type = string
-}
-
-variable "subscription_id" {
-  description = "Subscription ID"
-  type = string
-}
-
-variable "client_id" {
-  description = "Application ID(Client ID)"
-  type = string
-}
-
-variable "client_secret" {
-  description = "A secret string that the application uses to prove its identity when requesting a token. Also can be referred to as application password."
-  type = string
-}
-
 variable "sku" {
   description = "SKU"
   type = string
@@ -381,6 +355,17 @@ variable "enable_floating_ip" {
   description = "Indicates whether the load balancers will be deployed with floating IP."
   type = bool
   default = false
+}
+
+variable "subscription_id" {
+  description = "Subscription ID"
+  type = string
+}
+
+variable "admin_SSH_key" {
+  type = string
+  description = "(Optional) TheUsed when the authentication_type is 'SSH Public Key'. The SSH public key for SSH authentication to the template instances."
+  default = ""
 }
 
 variable "security_rules" {

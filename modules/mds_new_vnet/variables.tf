@@ -53,17 +53,6 @@ locals { // locals for 'authentication_type' allowed values
   // will fail if [var.authentication_type] is invalid:
   validate_authentication_type_value = index(local.authentication_type_allowed_values, var.authentication_type)
 }
-variable "template_name" {
-  description = "Template name. Should be defined according to deployment type(mds, ha, vmss)"
-  type = string
-  default = "mds_terraform"
-}
-
-variable "template_version" {
-  description = "Template version. It is recommended to always use the latest template version"
-  type = string
-  default = "20230910"
-}
 
 variable "installation_type" {
   description = "Installaiton type"
@@ -108,7 +97,6 @@ variable "os_version" {
 
 locals { // locals for 'vm_os_offer' allowed values
   os_version_allowed_values = [
-    "R81",
     "R8110",
     "R8120",
     "R82"
@@ -123,13 +111,12 @@ variable "vm_os_sku" {
 }
 
 variable "vm_os_offer" {
-  description = "The name of the image offer to be deployed.Choose from: check-point-cg-r81, check-point-cg-r8110, check-point-cg-r8120, check-point-cg-r82"
+  description = "The name of the image offer to be deployed.Choose from: check-point-cg-r8110, check-point-cg-r8120, check-point-cg-r82"
   type = string
 }
 
 locals { // locals for 'vm_os_offer' allowed values
   vm_os_offer_allowed_values = [
-    "check-point-cg-r81",
     "check-point-cg-r8110",
     "check-point-cg-r8120",
     "check-point-cg-r82"
@@ -241,27 +228,6 @@ variable "storage_account_additional_ips" {
   default = []
 }
 
-//********************** Credentials **************************//
-variable "tenant_id" {
-  description = "Tenant ID"
-  type = string
-}
-
-variable "subscription_id" {
-  description = "Subscription ID"
-  type = string
-}
-
-variable "client_id" {
-  description = "Application ID(Client ID)"
-  type = string
-}
-
-variable "client_secret" {
-  description = "A secret string that the application uses to prove its identity when requesting a token. Also can be referred to as application password."
-  type = string
-}
-
 variable "sic_key" {
   description = "sic key"
   type = string
@@ -275,6 +241,12 @@ variable "sku" {
   description = "SKU"
   type = string
   default = "Standard"
+}
+
+variable "admin_SSH_key" {
+  type = string
+  description = "(Optional) TheUsed when the authentication_type is 'SSH Public Key'. The SSH public key for SSH authentication to the template instances."
+  default = ""
 }
 
 variable "security_rules" {

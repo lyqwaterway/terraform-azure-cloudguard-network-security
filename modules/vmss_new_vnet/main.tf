@@ -5,8 +5,8 @@ module "common" {
   location = var.location
   admin_password = var.authentication_type == "SSH Public Key" ? random_id.random_id.hex : var.admin_password
   installation_type = var.installation_type
-  template_name = var.template_name
-  template_version = var.template_version
+  module_name = local.module_name
+  module_version = local.module_version
   number_of_vm_instances = var.number_of_vm_instances
   allow_upload_download = var.allow_upload_download
   vm_size = var.vm_size
@@ -188,7 +188,7 @@ resource "azurerm_storage_account" "vm-boot-diagnostics-storage" {
 //********************** Virtual Machines **************************//
 locals {
   SSH_authentication_type_condition = var.authentication_type == "SSH Public Key" ? true : false
-  availability_zones_num_condition = var.availability_zones_num == 0 ? null : var.availability_zones_num == 1 ? ["1"] : var.availability_zones_num == 2 ? ["1", "2"] : ["1", "2", "3"]
+  availability_zones_num_condition = var.availability_zones_num == "0" ? null : var.availability_zones_num == "1" ? ["1"] : var.availability_zones_num == "2" ? ["1", "2"] : ["1", "2", "3"]
   custom_image_condition = var.source_image_vhd_uri == "noCustomUri" ? false : true
   management_interface_name = split("-", var.management_interface)[0]
   management_ip_address_type = split("-", var.management_interface)[1]
@@ -253,21 +253,21 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
   admin_username = module.common.admin_username
   admin_password = module.common.admin_password
   custom_data = base64encode(templatefile("${path.module}/cloud-init.sh", {
-    installation_type = module.common.installation_type
-    allow_upload_download = module.common.allow_upload_download
-    os_version = module.common.os_version
-    template_name = module.common.template_name
-    template_version = module.common.template_version
-    template_type = "terraform"
-    is_blink = module.common.is_blink
-    bootstrap_script64 = base64encode(var.bootstrap_script)
-    location = module.common.resource_group_location
-    sic_key = var.sic_key
-    vnet = module.vnet.subnet_prefixes[0]
-    enable_custom_metrics = var.enable_custom_metrics ? "yes" : "no"
-    admin_shell = var.admin_shell
-    serial_console_password_hash = var.serial_console_password_hash
-    maintenance_mode_password_hash = var.maintenance_mode_password_hash
+      installation_type = module.common.installation_type
+      allow_upload_download = module.common.allow_upload_download
+      os_version = module.common.os_version
+      module_name = module.common.module_name
+      module_version = module.common.module_version
+      template_type = "terraform"
+      is_blink = module.common.is_blink
+      bootstrap_script64 = base64encode(var.bootstrap_script)
+      location = module.common.resource_group_location
+      sic_key = var.sic_key
+      vnet = module.vnet.subnet_prefixes[0]
+      enable_custom_metrics = var.enable_custom_metrics ? "yes" : "no"
+      admin_shell = var.admin_shell
+      serial_console_password_hash = var.serial_console_password_hash
+      maintenance_mode_password_hash = var.maintenance_mode_password_hash
     }))
 
 
@@ -277,7 +277,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
       for_each = local.SSH_authentication_type_condition ? [
         1] : []
       content {
-        public_key = file("azure_public_key")
+        public_key = var.admin_SSH_key
         username = "notused"
       }
     }

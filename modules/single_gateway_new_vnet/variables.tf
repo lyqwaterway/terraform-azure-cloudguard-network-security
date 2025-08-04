@@ -59,20 +59,8 @@ locals { // locals for 'authentication_type' allowed values
   validate_authentication_type_value = index(local.authentication_type_allowed_values, var.authentication_type)
 }
 
-variable "template_name" {
-  description = "Template name. Should be defined according to deployment type(mgmt, ha, vmss, sg)"
-  type = string
-  default = "single"
-}
-
-variable "template_version" {
-  description = "Template version. It is recommended to always use the latest template version"
-  type = string
-  default = "20230910"
-}
-
 variable "installation_type" {
-  description = "installation type"
+  description = "Installation type"
   type = string
   default = "gateway"
 }
@@ -101,7 +89,6 @@ variable "os_version" {
 
 locals { // locals for 'vm_os_offer' allowed values
   os_version_allowed_values = [
-    "R81",
     "R8110",
     "R8120",
     "R82"
@@ -116,13 +103,12 @@ variable "vm_os_sku" {
 }
 
 variable "vm_os_offer" {
-  description = "The name of the image offer to be deployed.Choose from: check-point-cg-r81, check-point-cg-r8110, check-point-cg-r8120, check-point-cg-r82"
+  description = "The name of the image offer to be deployed.Choose from: check-point-cg-r8110, check-point-cg-r8120, check-point-cg-r82"
   type = string
 }
 
 locals { // locals for 'vm_os_offer' allowed values
   vm_os_offer_allowed_values = [
-    "check-point-cg-r81",
     "check-point-cg-r8110",
     "check-point-cg-r8120",
     "check-point-cg-r82"
@@ -244,41 +230,6 @@ variable "bootstrap_script" {
   #"touch /home/admin/bootstrap.txt; echo 'hello_world' > /home/admin/bootstrap.txt"
 }
 
-//********************** Credentials **************************//
-variable "tenant_id" {
-  description = "Tenant ID"
-  type = string
-}
-
-variable "subscription_id" {
-  description = "Subscription ID"
-  type = string
-}
-
-variable "client_id" {
-  description = "Application ID(Client ID)"
-  type = string
-}
-
-variable "client_secret" {
-  description = "A secret string that the application uses to prove its identity when requesting a token. Also can be referred to as application password."
-  type = string
-}
-
-variable "sic_key" {
-  type = string
-}
-
-resource "null_resource" "sic_key_invalid" {
-  count = length(var.sic_key) >= 12 ? 0 : "SIC key must be at least 12 characters long"
-}
-
-variable "sku" {
-  description = "SKU"
-  type = string
-  default = "Standard"
-}
-
 variable "security_rules" {
   description = "Security rules for the Network Security Group using this format [name, priority, direction, access, protocol, source_source_port_rangesport_range, destination_port_ranges, source_address_prefix, destination_address_prefix, description]"
   type    = list(any)
@@ -296,4 +247,25 @@ variable "security_rules" {
           destination_address_prefix = "*"
       }
   ]
+}
+//********************** Credentials **************************//
+
+variable "sic_key" {
+  type = string
+}
+
+resource "null_resource" "sic_key_invalid" {
+  count = length(var.sic_key) >= 12 ? 0 : "SIC key must be at least 12 characters long"
+}
+
+variable "sku" {
+  description = "SKU"
+  type = string
+  default = "Standard"
+}
+
+variable "admin_SSH_key" {
+  type = string
+  description = "(Optional) TheUsed when the authentication_type is 'SSH Public Key'. The SSH public key for SSH authentication to the template instances."
+  default = ""
 }

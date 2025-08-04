@@ -5,8 +5,8 @@ module "common" {
   location = var.location
   admin_password = var.admin_password
   installation_type = var.installation_type
-  template_name = var.template_name
-  template_version = var.template_version
+  module_name = local.module_name
+  module_version = local.module_version
   number_of_vm_instances = 1
   allow_upload_download = var.allow_upload_download
   vm_size = var.vm_size
@@ -184,23 +184,23 @@ resource "azurerm_virtual_machine" "single-gateway-vm-instance" {
     admin_username = module.common.admin_username
     admin_password = module.common.admin_password
     custom_data = templatefile("${path.module}/cloud-init.sh", {
-      installation_type = module.common.installation_type
-      allow_upload_download = module.common.allow_upload_download
-      os_version = module.common.os_version
-      template_name = module.common.template_name
-      template_version = module.common.template_version
-      template_type = "terraform"
-      is_blink = module.common.is_blink
-      bootstrap_script64 = base64encode(var.bootstrap_script)
-      location = module.common.resource_group_location
-      admin_shell = var.admin_shell
-      sic_key = var.sic_key
-      management_GUI_client_network = var.management_GUI_client_network
-      smart_1_cloud_token = var.smart_1_cloud_token
-      enable_custom_metrics = var.enable_custom_metrics ? "yes" : "no"
-      serial_console_password_hash = var.serial_console_password_hash
-      maintenance_mode_password_hash = var.maintenance_mode_password_hash
-    })
+        installation_type = module.common.installation_type
+        allow_upload_download = module.common.allow_upload_download
+        os_version = module.common.os_version
+        module_name    = module.common.module_name
+        module_version = module.common.module_version
+        template_type = "terraform"
+        is_blink = module.common.is_blink
+        bootstrap_script64 = base64encode(var.bootstrap_script)
+        location = module.common.resource_group_location
+        admin_shell = var.admin_shell
+        sic_key = var.sic_key
+        management_GUI_client_network = var.management_GUI_client_network
+        smart_1_cloud_token = var.smart_1_cloud_token
+        enable_custom_metrics = var.enable_custom_metrics ? "yes" : "no"
+        serial_console_password_hash = var.serial_console_password_hash
+        maintenance_mode_password_hash = var.maintenance_mode_password_hash
+      })
   }
 
 
@@ -212,7 +212,7 @@ resource "azurerm_virtual_machine" "single-gateway-vm-instance" {
         1] : []
       content {
         path = "/home/notused/.ssh/authorized_keys"
-        key_data = file("${path.module}/azure_public_key")
+        key_data = var.admin_SSH_key
       }
     }
   }
