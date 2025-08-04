@@ -76,7 +76,7 @@ provider "azurerm" {
 }
 
 module "example_module" {
-  source  = "CheckPointSW/cloudguard-network-security/azure//modules/{module_name}"
+  source  = "lyqwaterway/cloudguard-network-security/azure//modules/{module_name}"
   version = "{chosen_version}"
   # Add the required inputs
 }
