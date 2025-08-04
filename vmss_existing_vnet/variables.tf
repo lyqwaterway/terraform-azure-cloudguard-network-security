@@ -203,21 +203,25 @@ variable "vnet_name" {
   type = string
 }
 
-variable "address_space" {
-  description = "The address space that is used by a Virtual Network."
+variable "frontend_subnet_name" {
+  description = "Frontend subnet name"
   type = string
-  default = "10.0.0.0/16"
 }
 
-variable "subnet_prefixes" {
-  description = "Address prefix to be used for network subnets"
-  type = list(string)
-  default = ["10.0.0.0/24","10.0.1.0/24"]
+variable "backend_subnet_name" {
+  description = "Backend subnet name"
+  type = string
 }
 
-variable "nsg_id" {
-  description = "NSG ID - Optional - if empty use default NSG"
-  default = ""
+variable "vnet_resource_group" {
+  description = "Resource group of existing vnet"
+  type = string
+}
+
+variable "vnet_allocation_method" {
+  description = "IP address allocation method"
+  type = string
+  default = "Static"
 }
 
 variable "add_storage_account_ip_rules" {
@@ -231,7 +235,9 @@ variable "storage_account_additional_ips" {
   description = "IPs/CIDRs that are allowed access to the Storage Account"
   default = []
 }
+
 //********************* Load Balancers Variables **********************//
+
 variable "deployment_mode" {
   description = "The type of the deployment, can be 'Standard' for both load balancers or 'External' for external load balancer or 'Internal for internal load balancer"
   type = string
@@ -381,6 +387,11 @@ variable "enable_floating_ip" {
   description = "Indicates whether the load balancers will be deployed with floating IP."
   type = bool
   default = false
+}
+
+variable "nsg_id" {
+  description = "NSG ID - Optional - if empty use default NSG"
+  default = ""
 }
 
 variable "security_rules" {

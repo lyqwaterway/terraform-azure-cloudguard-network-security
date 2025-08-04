@@ -14,7 +14,7 @@ please see the [CloudGuard Network for Azure Virtual Machine Scale Sets (VMSS) D
 This solution uses the following modules:
 - /terraform/azure/modules/common - used for creating a resource group and defining common variables.
 - /terraform/azure/modules/vnet - used for creating new virtual network and subnets.
-- /terraform/azure/modules/network-security-group - used for creating new network security groups and rules.
+- /terraform/azure/modules/network_security_group - used for creating new network security groups and rules.
 
 
 ## Configurations

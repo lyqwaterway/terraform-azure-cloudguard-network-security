@@ -11,10 +11,10 @@ module "common" {
   allow_upload_download = var.allow_upload_download
   vm_size = var.vm_size
   disk_size = var.disk_size
+  is_blink = var.is_blink
   os_version = var.os_version
   vm_os_sku = var.vm_os_sku
   vm_os_offer = var.vm_os_offer
-  is_blink = var.is_blink
   authentication_type = var.authentication_type
   serial_console_password_hash = var.serial_console_password_hash
   maintenance_mode_password_hash = var.maintenance_mode_password_hash
@@ -22,25 +22,16 @@ module "common" {
 }
 
 //********************** Networking **************************//
-module "vnet" {
-  source = "../vnet"
-
-  vnet_name = var.vnet_name
-  resource_group_name = module.common.resource_group_name
-  location = module.common.resource_group_location
-  address_space = var.address_space
-  subnet_prefixes = [var.frontend_subnet_prefix, var.backend_subnet_prefix]
-  subnet_names = ["${var.single_gateway_name}-frontend-subnet", "${var.single_gateway_name}-backend-subnet"]
-  nsg_id = var.nsg_id == "" ? module.network_security_group[0].network_security_group_id: var.nsg_id
+data "azurerm_subnet" "frontend_subnet" {
+  name = var.subnet_frontend_name
+  virtual_network_name = var.vnet_name
+  resource_group_name = var.vnet_resource_group
 }
 
-module "network_security_group" {
-  source = "../network_security_group"
-  count = var.nsg_id == "" ? 1 : 0
-  resource_group_name = module.common.resource_group_name
-  security_group_name = "${module.common.resource_group_name}-nsg"
-  location = module.common.resource_group_location
-  security_rules = var.security_rules
+data "azurerm_subnet" "backend_subnet" {
+  name = var.subnet_backend_name
+  virtual_network_name = var.vnet_name
+  resource_group_name = var.vnet_resource_group
 }
 
 resource "azurerm_public_ip" "public-ip" {
@@ -56,10 +47,19 @@ resource "azurerm_public_ip" "public-ip" {
     random_id.randomId.hex])
 }
 
+module "network_security_group" {
+  source = "../network_security_group"
+  count = var.nsg_id == "" ? 1 : 0
+  resource_group_name = module.common.resource_group_name
+  security_group_name = "${module.common.resource_group_name}-nsg"
+  location = module.common.resource_group_location
+  security_rules = var.security_rules
+}
+
 resource "azurerm_network_interface_security_group_association" "security_group_association" {
-  depends_on = [azurerm_network_interface.nic, module.network_security_group]
+  depends_on = [azurerm_network_interface.nic]
   network_interface_id = azurerm_network_interface.nic.id
-  network_security_group_id =  var.nsg_id == "" ? module.network_security_group[0].network_security_group_id: var.nsg_id
+  network_security_group_id = var.nsg_id == "" ? module.network_security_group[0].network_security_group_id: var.nsg_id
 }
 
 resource "azurerm_network_interface" "nic" {
@@ -74,9 +74,9 @@ resource "azurerm_network_interface" "nic" {
 
   ip_configuration {
     name = "ipconfig1"
-    subnet_id = module.vnet.vnet_subnets[0]
+    subnet_id = data.azurerm_subnet.frontend_subnet.id
     private_ip_address_allocation = var.vnet_allocation_method
-    private_ip_address = cidrhost(var.frontend_subnet_prefix, 4)
+    private_ip_address = var.subnet_frontend_1st_Address
     public_ip_address_id = azurerm_public_ip.public-ip.id
   }
 }
@@ -92,9 +92,9 @@ resource "azurerm_network_interface" "nic1" {
 
   ip_configuration {
     name = "ipconfig2"
-    subnet_id = module.vnet.vnet_subnets[1]
+    subnet_id = data.azurerm_subnet.backend_subnet.id
     private_ip_address_allocation = var.vnet_allocation_method
-    private_ip_address = cidrhost(var.backend_subnet_prefix, 4)
+    private_ip_address = var.subnet_backend_1st_Address
   }
 }
 
@@ -153,7 +153,7 @@ resource "azurerm_virtual_machine" "single-gateway-vm-instance" {
   location = module.common.resource_group_location
   name = var.single_gateway_name
   network_interface_ids = [
-    azurerm_network_interface.nic.id,
+    azurerm_network_interface.nic.id, 
     azurerm_network_interface.nic1.id]
   resource_group_name = module.common.resource_group_name
   vm_size = module.common.vm_size
@@ -202,6 +202,7 @@ resource "azurerm_virtual_machine" "single-gateway-vm-instance" {
       maintenance_mode_password_hash = var.maintenance_mode_password_hash
     })
   }
+
 
   os_profile_linux_config {
     disable_password_authentication = local.SSH_authentication_type_condition

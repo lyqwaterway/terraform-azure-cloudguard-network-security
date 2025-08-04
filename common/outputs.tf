@@ -14,10 +14,6 @@ output "azurerm_resource_group_id" {
   value = azurerm_resource_group.resource_group.id
 }
 
-output "resource_group_link" {
-  value = "https://portal.azure.com/#@/resource${azurerm_resource_group.resource_group.id}"
-}
-
 output "admin_username" {
   value = var.admin_username
 }
@@ -30,12 +26,12 @@ output "vm_instance_identity" {
   value = var.vm_instance_identity_type
 }
 
-output "template_name"{
-  value = var.template_name
+output "module_name"{
+  value = var.module_name
 }
 
-output "template_version" {
-  value = var.template_version
+output "module_version" {
+  value = var.module_version
 }
 
 output "bootstrap_script"{

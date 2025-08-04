@@ -5,8 +5,8 @@ module "common" {
   location = var.location
   admin_password = var.admin_password
   installation_type = var.installation_type
-  template_name = var.template_name
-  template_version = var.template_version
+  module_name = local.module_name
+  module_version = local.module_version
   number_of_vm_instances = 1
   allow_upload_download = var.allow_upload_download
   vm_size = var.vm_size
@@ -31,16 +31,16 @@ module "vnet" {
   address_space = var.address_space
   subnet_prefixes = [var.subnet_prefix]
   subnet_names = ["${var.mgmt_name}-subnet"]
-  nsg_id = var.nsg_id == "" ? module.network-security-group[0].network_security_group_id: var.nsg_id
+  nsg_id = var.nsg_id == "" ? module.network_security_group[0].network_security_group_id: var.nsg_id
 }
 
-module "network-security-group" {
-  source = "../network-security-group"
+module "network_security_group" {
+  source = "../network_security_group"
   count = var.nsg_id == "" ? 1 : 0
   resource_group_name = module.common.resource_group_name
   security_group_name = "${module.common.resource_group_name}-nsg"
   location = module.common.resource_group_location
-  security_rules = [
+  security_rules = setunion(var.security_rules, [
     {
       name = "SSH"
       priority = "100"
@@ -137,7 +137,7 @@ module "network-security-group" {
       source_address_prefix = "*"
       destination_address_prefix = "*"
     }
-  ]
+  ])
 }
 
 resource "azurerm_public_ip" "public-ip" {
@@ -154,9 +154,9 @@ resource "azurerm_public_ip" "public-ip" {
 }
 
 resource "azurerm_network_interface_security_group_association" "security_group_association" {
-  depends_on = [azurerm_network_interface.nic, module.network-security-group]
+  depends_on = [azurerm_network_interface.nic, module.network_security_group]
   network_interface_id = azurerm_network_interface.nic.id
-  network_security_group_id =  var.nsg_id == "" ? module.network-security-group[0].network_security_group_id: var.nsg_id
+  network_security_group_id =  var.nsg_id == "" ? module.network_security_group[0].network_security_group_id: var.nsg_id
 }
 
 resource "azurerm_network_interface" "nic" {
@@ -259,21 +259,21 @@ resource "azurerm_virtual_machine" "mgmt-vm-instance" {
     admin_username = module.common.admin_username
     admin_password = module.common.admin_password
     custom_data = templatefile("${path.module}/cloud-init.sh", {
-      installation_type = module.common.installation_type
-      allow_upload_download = module.common.allow_upload_download
-      os_version = module.common.os_version
-      template_name = module.common.template_name
-      template_version = module.common.template_version
-      template_type = "terraform"
-      is_blink = module.common.is_blink
-      bootstrap_script64 = base64encode(var.bootstrap_script)
-      location = module.common.resource_group_location
-      management_GUI_client_network = var.management_GUI_client_network
-      enable_api = var.mgmt_enable_api
-      admin_shell = var.admin_shell
-      serial_console_password_hash = var.serial_console_password_hash
-      maintenance_mode_password_hash = var.maintenance_mode_password_hash
-    })
+        installation_type = module.common.installation_type
+        allow_upload_download = module.common.allow_upload_download
+        os_version = module.common.os_version
+        module_name = module.common.module_name
+        module_version = module.common.module_version
+        template_type = "terraform"
+        is_blink = module.common.is_blink
+        bootstrap_script64 = base64encode(var.bootstrap_script)
+        location = module.common.resource_group_location
+        management_GUI_client_network = var.management_GUI_client_network
+        enable_api = var.mgmt_enable_api
+        admin_shell = var.admin_shell
+        serial_console_password_hash = var.serial_console_password_hash
+        maintenance_mode_password_hash = var.maintenance_mode_password_hash
+      })
   }
 
   os_profile_linux_config {
@@ -284,7 +284,7 @@ resource "azurerm_virtual_machine" "mgmt-vm-instance" {
         1] : []
       content {
         path = "/home/notused/.ssh/authorized_keys"
-        key_data = file("${path.module}/azure_public_key")
+        key_data = var.admin_SSH_key
       }
     }
   }

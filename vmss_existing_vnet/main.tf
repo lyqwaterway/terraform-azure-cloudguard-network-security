@@ -22,14 +22,17 @@ module "common" {
 }
 
 //********************** Networking **************************//
-module "vnet" {
-  source = "../vnet"
-  vnet_name = var.vnet_name
-  resource_group_name = module.common.resource_group_name
-  location = module.common.resource_group_location
-  nsg_id = var.nsg_id == "" ? module.network_security_group[0].network_security_group_id: var.nsg_id
-  address_space = var.address_space
-  subnet_prefixes = var.subnet_prefixes
+
+data "azurerm_subnet" "frontend" {
+  name = var.frontend_subnet_name
+  virtual_network_name = var.vnet_name
+  resource_group_name = var.vnet_resource_group
+}
+
+data "azurerm_subnet" "backend" {
+  name = var.backend_subnet_name
+  virtual_network_name = var.vnet_name
+  resource_group_name = var.vnet_resource_group
 }
 
 module "network_security_group" {
@@ -54,7 +57,7 @@ resource "azurerm_public_ip" "public-ip-lb" {
   name = "${var.vmss_name}-app-1"
   location = module.common.resource_group_location
   resource_group_name = module.common.resource_group_name
-  allocation_method = module.vnet.allocation_method
+  allocation_method = var.vnet_allocation_method
   sku = var.sku
   domain_name_label = "${lower(var.vmss_name)}-${random_id.random_id.hex}"
 }
@@ -87,9 +90,9 @@ resource "azurerm_lb" "backend-lb" {
   sku = var.sku
   frontend_ip_configuration {
     name = "backend-lb"
-    subnet_id = module.vnet.vnet_subnets[1]
-    private_ip_address_allocation = module.vnet.allocation_method
-    private_ip_address = cidrhost(module.vnet.subnet_prefixes[1], var.backend_lb_IP_address)
+    subnet_id = data.azurerm_subnet.backend.id
+    private_ip_address_allocation = "Static"
+    private_ip_address = cidrhost(data.azurerm_subnet.backend.address_prefixes[0],var.backend_lb_IP_address)
   }
 }
 
@@ -185,6 +188,7 @@ resource "azurerm_storage_account" "vm-boot-diagnostics-storage" {
    }
 }
 
+
 //********************** Virtual Machines **************************//
 locals {
   SSH_authentication_type_condition = var.authentication_type == "SSH Public Key" ? true : false
@@ -263,7 +267,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
     bootstrap_script64 = base64encode(var.bootstrap_script)
     location = module.common.resource_group_location
     sic_key = var.sic_key
-    vnet = module.vnet.subnet_prefixes[0]
+    vnet = data.azurerm_subnet.frontend.address_prefixes[0]
     enable_custom_metrics = var.enable_custom_metrics ? "yes" : "no"
     admin_shell = var.admin_shell
     serial_console_password_hash = var.serial_console_password_hash
@@ -297,7 +301,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
      network_security_group_id = module.network_security_group[0].network_security_group_id
      ip_configuration {
        name = "ipconfig1"
-       subnet_id = module.vnet.vnet_subnets[0]
+       subnet_id = data.azurerm_subnet.frontend.id
        load_balancer_backend_address_pool_ids = var.deployment_mode != "Internal" ? [azurerm_lb_backend_address_pool.frontend-lb-pool[0].id]: null
        primary = true
        public_ip_address {
@@ -315,7 +319,7 @@ resource "azurerm_linux_virtual_machine_scale_set" "vmss" {
      enable_accelerated_networking = true
      ip_configuration {
        name = "ipconfig2"
-       subnet_id = module.vnet.vnet_subnets[1]
+       subnet_id = data.azurerm_subnet.backend.id
        load_balancer_backend_address_pool_ids = var.deployment_mode != "External" ? [azurerm_lb_backend_address_pool.backend-lb-pool[0].id] : null
        primary = true
      }

@@ -1,6 +1,6 @@
 //********************** Basic Configuration Variables **************************//
-variable "single_gateway_name" {
-  description = "Single gateway name"
+variable "mgmt_name" {
+  description = "Management name"
   type = string
 }
 
@@ -31,11 +31,6 @@ variable "admin_password" {
   type = string
 }
 
-variable "smart_1_cloud_token" {
-  description = "Smart-1 Cloud Token"
-  type = string
-}
-
 variable "serial_console_password_hash" {
   description = "Optional parameter, used to enable serial console connection in case of SSH key as authentication type"
   type = string
@@ -59,29 +54,10 @@ locals { // locals for 'authentication_type' allowed values
   validate_authentication_type_value = index(local.authentication_type_allowed_values, var.authentication_type)
 }
 
-variable "template_name" {
-  description = "Template name. Should be defined according to deployment type(mgmt, ha, vmss, sg)"
-  type = string
-  default = "single"
-}
-
-variable "template_version" {
-  description = "Template version. It is recommended to always use the latest template version"
-  type = string
-  default = "20230910"
-}
-
 variable "installation_type" {
-  description = "installation type"
+  description = "Installation type"
   type = string
-  default = "gateway"
-}
-
-locals { // locals for 'installation_type' allowed values
-  installation_type_allowed_values = [
-    "gateway",
-    "standalone"
-  ]
+  default = "management"
 }
 
 variable "vm_size" {
@@ -101,7 +77,6 @@ variable "os_version" {
 
 locals { // locals for 'vm_os_offer' allowed values
   os_version_allowed_values = [
-    "R81",
     "R8110",
     "R8120",
     "R82"
@@ -116,16 +91,15 @@ variable "vm_os_sku" {
 }
 
 variable "vm_os_offer" {
-  description = "The name of the image offer to be deployed.Choose from: check-point-cg-r81, check-point-cg-r8110, check-point-cg-r8120, check-point-cg-r82"
+  description = "The name of the image offer to be deployed.Choose from: check-point-cg-r8110, check-point-cg-r8120, check-point-cg-r82"
   type = string
 }
 
 locals { // locals for 'vm_os_offer' allowed values
   vm_os_offer_allowed_values = [
-    "check-point-cg-r81",
     "check-point-cg-r8110",
     "check-point-cg-r8120",
-    "check-point-cg-r82"
+    "check-point-cg-r82",
   ]
   // will fail if [var.vm_os_offer] is invalid:
   validate_os_offer_value = index(local.vm_os_offer_allowed_values, var.vm_os_offer)
@@ -134,17 +108,6 @@ locals { // locals for 'vm_os_offer' allowed values
 variable "allow_upload_download" {
   description = "Automatically download Blade Contracts and other important data. Improve product experience by sending data to Check Point"
   type = bool
-}
-
-variable "enable_custom_metrics" {
-  description = "Indicates whether CloudGuard Metrics will be use for Cluster members monitoring."
-  type = bool
-  default = true
-}
-
-variable "is_blink" {
-  description = "Define if blink image is used for deployment"
-  default = true
 }
 
 variable "admin_shell" {
@@ -170,28 +133,19 @@ variable "vnet_name" {
   type = string
 }
 
-variable "address_space" {
-  description = "The address space that is used by a Virtual Network."
+variable "management_subnet_name" {
+  description = "management subnet name"
   type = string
-  default = "10.12.0.0/16"
 }
 
-variable "frontend_subnet_prefix" {
-  description = "Address prefix to be used for network frontend subnet"
+variable "subnet_1st_Address" {
+  description = "The first available address of the subnet"
   type = string
-  default = "10.12.0.0/24"
 }
 
-variable "backend_subnet_prefix" {
-  description = "Address prefix to be used for network backend subnet"
+variable "vnet_resource_group" {
+  description = "Resource group of existing vnet"
   type = string
-  default = "10.12.1.0/24"
-}
-
-variable "vnet_subnets" {
-  description = "Subnets in vnet"
-  type = list(string)
-  default = ["10.12.0.0/24", "10.12.1.0/24"]
 }
 
 variable "vnet_allocation_method" {
@@ -203,6 +157,39 @@ variable "vnet_allocation_method" {
 variable "management_GUI_client_network" {
   description = "Allowed GUI clients - GUI clients network CIDR"
   type = string
+}
+
+variable "mgmt_enable_api" {
+  description = "Enable api access to the management. allowed values: all, management_only, gui_clients, disable"
+  type = string
+  default = "disable"
+}
+
+locals {
+  regex_valid_management_GUI_client_network = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/(3[0-2]|2[0-9]|1[0-9]|[0-9]))$"
+  // Will fail if var.management_GUI_client_network is invalid
+  regex_management_GUI_client_network = regex(local.regex_valid_management_GUI_client_network, var.management_GUI_client_network) == var.management_GUI_client_network ? 0 : "Variable [management_GUI_client_network] must be a valid IPv4 network CIDR."
+
+  mgmt_enable_api_allowed_values = [
+    "disable",
+    "all",
+    "management_only",
+    "gui_clients"
+  ]
+  // will fail if [var.mgmt_enable_api] is invalid:
+  validate_mgmt_enable_api_value = index(local.mgmt_enable_api_allowed_values, var.mgmt_enable_api)
+
+  regex_valid_subnet_1st_Address = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+  // Will fail if var.subnet_1st_Address is invalid
+  regex_subnet_1st_Address = regex(local.regex_valid_subnet_1st_Address, var.subnet_1st_Address) == var.subnet_1st_Address ? 0 : "Variable [subnet_1st_Address] must be a valid address."
+}
+
+variable "bootstrap_script" {
+  description = "An optional script to run on the initial boot"
+  default = ""
+  type = string
+  #example:
+  #"touch /home/admin/bootstrap.txt; echo 'hello_world' > /home/admin/bootstrap.txt"
 }
 
 variable "nsg_id" {
@@ -221,57 +208,6 @@ variable "storage_account_additional_ips" {
   description = "IPs/CIDRs that are allowed access to the Storage Account"
   default = []
 }
-locals {
-  regex_valid_management_GUI_client_network = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/(3[0-2]|2[0-9]|1[0-9]|[0-9]))$"
-  // Will fail if var.management_GUI_client_network is invalid
-  regex_management_GUI_client_network = regex(local.regex_valid_management_GUI_client_network, var.management_GUI_client_network) == var.management_GUI_client_network ? 0 : "Variable [management_GUI_client_network] must be a valid IPv4 network CIDR."
-
-
-  regex_valid_network_cidr = "^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/(3[0-2]|2[0-9]|1[0-9]|[0-9]))|$"
-  // Will fail if var.address_space is invalid
-  regex_address_space = regex(local.regex_valid_network_cidr, var.address_space) == var.address_space ? 0 : "Variable [address_space] must be a valid address in CIDR notation."
-  // Will fail if var.subnet_prefix is invalid
-  regex_frontend_subnet_prefix = regex(local.regex_valid_network_cidr, var.frontend_subnet_prefix) == var.frontend_subnet_prefix ? 0 : "Variable [subnet_prefix] must be a valid address in CIDR notation."
-  // Will fail if var.subnet_prefix is invalid
-  regex_backend_subnet_prefix = regex(local.regex_valid_network_cidr, var.backend_subnet_prefix) == var.backend_subnet_prefix ? 0 : "Variable [subnet_prefix] must be a valid address in CIDR notation."
-}
-
-variable "bootstrap_script" {
-  description = "An optional script to run on the initial boot"
-  default = ""
-  type = string
-  #example:
-  #"touch /home/admin/bootstrap.txt; echo 'hello_world' > /home/admin/bootstrap.txt"
-}
-
-//********************** Credentials **************************//
-variable "tenant_id" {
-  description = "Tenant ID"
-  type = string
-}
-
-variable "subscription_id" {
-  description = "Subscription ID"
-  type = string
-}
-
-variable "client_id" {
-  description = "Application ID(Client ID)"
-  type = string
-}
-
-variable "client_secret" {
-  description = "A secret string that the application uses to prove its identity when requesting a token. Also can be referred to as application password."
-  type = string
-}
-
-variable "sic_key" {
-  type = string
-}
-
-resource "null_resource" "sic_key_invalid" {
-  count = length(var.sic_key) >= 12 ? 0 : "SIC key must be at least 12 characters long"
-}
 
 variable "sku" {
   description = "SKU"
@@ -279,21 +215,14 @@ variable "sku" {
   default = "Standard"
 }
 
+variable "admin_SSH_key" {
+  type = string
+  description = "(Optional) TheUsed when the authentication_type is 'SSH Public Key'. The SSH public key for SSH authentication to the template instances."
+  default = ""
+}
+
 variable "security_rules" {
   description = "Security rules for the Network Security Group using this format [name, priority, direction, access, protocol, source_source_port_rangesport_range, destination_port_ranges, source_address_prefix, destination_address_prefix, description]"
   type    = list(any)
-  default = [
-      {
-          name = "AllowAllInBound"
-          priority = "100"
-          direction = "Inbound"
-          access = "Allow"
-          protocol = "*"
-          source_port_ranges = "*"
-          destination_port_ranges = "*"
-          description = "Allow all inbound connections"
-          source_address_prefix = "*"
-          destination_address_prefix = "*"
-      }
-  ]
+  default = []
 }

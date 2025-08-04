@@ -1,22 +1,20 @@
 # Check Point CloudGuard IaaS Management Terraform deployment for Azure
 
-This Terraform module deploys Check Point CloudGuard IaaS Management solution into a new Vnet in Azure.
+This Terraform module deploys Check Point CloudGuard IaaS Management solution into an existing Vnet in Azure.
 As part of the deployment the following resources are created:
 - Resource group
-- Virtual network
 - Network security group
 - Virtual Machine
 - System assigned identity
 
 This solution uses the following modules:
 - /terraform/azure/modules/common - used for creating a resource group and defining common variables.
-- /terraform/azure/modules/vnet - used for creating new virtual network and subnets.
 - /terraform/azure/modules/network_security_group - used for creating new network security groups and rules.
 
 
 ## Configurations
 - Install and configure Terraform to provision Azure resources: [Configure Terraform for Azure](https://docs.microsoft.com/en-us/azure/virtual-machines/linux/terraform-install-configure)
-- In order to use ssh connection to VMs, it is **required** to add a public key to the /terraform/azure/management-new-vnet/azure_public_key file.
+- In order to use ssh connection to VMs, it is **required** to add a public key to the /terraform/azure/management-existing-vnet/azure_public_key file.
 
 ## Usage
 - Choose the preferred login method to Azure in order to deploy the solution:
@@ -60,7 +58,7 @@ This solution uses the following modules:
     
     - In the terraform.tfvars file leave empty double quotes for client_secret, client_id and tenant_id variables. 
  
-- Fill all variables in the /terraform/azure/management-new-vnet/terraform.tfvars file with proper values (see below for variables descriptions).
+- Fill all variables in the /terraform/azure/management-existing-vnet/terraform.tfvars file with proper values (see below for variables descriptions).
 - From a command line initialize the Terraform configuration directory:
 
         terraform init
@@ -73,7 +71,7 @@ This solution uses the following modules:
 
 ### terraform.tfvars variables:
  | Name          | Description   | Type          | Allowed values | Default |
- | ------------- | ------------- | ------------- | -------------  | -------------  |
+ | ------------- | ------------- | ------------- | -------------  | ------------- |
  | **client_secret** | The client secret of the Service Principal used to deploy the solution | string | | n/a
  |  |  |  |  |  |
  | **client_id** | The client ID of the Service Principal used to deploy the solution | string | | n/a
@@ -88,17 +86,19 @@ This solution uses the following modules:
  |  |  |  |  |  |
  | **resource_group_name** | The name of the resource group that will contain the contents of the deployment | string | Resource group names only allow alphanumeric characters, periods, underscores, hyphens and parenthesis and cannot end in a period | n/a
  |  |  |  |  |  |
- | **mgmt_name** | Management name  | string | | n/a 
+ | **mgmt_name** | Management name  | string |  | n/a
  |  |  |  |  |  |
  | **location** | The region where the resources will be deployed at  | string | The full list of Azure regions can be found at https://azure.microsoft.com/regions | n/a
  |  |  |  |  |  |
- | **vnet_name** | The name of virtual network that will be created  | string | The name must begin with a letter or number, end with a letter, number or underscore, and may contain only letters, numbers, underscores, periods, or hyphens | n/a
+ | **vnet_name** | Virtual Network name | string | The name must begin with a letter or number, end with a letter, number or underscore, and may contain only letters, numbers, underscores, periods, or hyphens | n/a
  |  |  |  |  |  |
- | **address_space** | The address space that is used by a Virtual Network  | string | A valid address in CIDR notation  | "10.0.0.0/16"
+ | **vnet_resource_group** | Resource Group of the existing virtual network | string | The exact name of the existing vnet's resource group | n/a
  |  |  |  |  |  |
- | **subnet_prefix** | Address prefix to be used for network subnet | string | A valid address in CIDR notation  | "10.0.0.0/24"
+ | **management_subnet_name** | Management subnet name | string | The exact name of the existing subnet | n/a
  |  |  |  |  |  |
- | **management_GUI_client_network** | Allowed GUI clients - GUI clients network CIDR  | string | | n/a
+ | **subnet_1st_Address** | The first available address of the subnet | string | | n/a
+ |  |  |  |  |  |
+ | **management_GUI_client_network** | Allowed GUI clients - GUI clients network CIDR  | string | | n/a 
  |  |  |  |  |  |
  | **mgmt_enable_api** | Enable api access to the management  | string | - "all"; <br/> - "management_only"; <br/> - "gui_clients" <br/> - "disable"; | "disable"
  |  |  |  |  |  |
@@ -108,7 +108,7 @@ This solution uses the following modules:
  |  |  |  |  |  |
  | **disk_size** | Storage data disk size size(GB) | string | A number in the range 100 - 3995 (GB) | n/a
  |  |  |  |  |  |
- | **vm_os_sku** | A sku of the image to be deployed | string |  "mgmt-byol" - BYOL license; <br/>"mgmt-25" - PAYG; | n/a
+ | **vm_os_sku** | A sku of the image to be deployed | string | "mgmt-byol" - BYOL license; <br/>"mgmt-25" - PAYG; | n/a
  |  |  |  |  |  |
  | **vm_os_offer** | The name of the image offer to be deployed | string | "check-point-cg-r81"; <br/>"check-point-cg-r8110"; <br/>"check-point-cg-r8120"; <br/>"check-point-cg-r82"; | n/a
  |  |  |  |  |  |
@@ -126,7 +126,7 @@ This solution uses the following modules:
  |  |  |  |  |  |
  | **maintenance_mode_password_hash** | Maintenance mode password hash, relevant only for R81.20 and higher versions, to generate a password hash use the command 'grub2-mkpasswd-pbkdf2' on Linux and paste it here  | string |  | n/a
  |  |  |  |  |  |
- | **nsg_id** | Optional ID for a Network Security Group that already exists in Azure, if not provided, will create a default NSG | string | Existing NSG resource ID | "" 
+ | **nsg_id** | Optional ID for a Network Security Group that already exists in Azure, if not provided, will create a default NSG | string | Existing NSG resource ID | ""
  |  |  |  |  |  |
  | **add_storage_account_ip_rules** | Add Storage Account IP rules that allow access to the Serial Console only for IPs based on their geographic location, if false then accses will be allowed from all networks | boolean | true; <br/>false; |  false
  |  |  |  |  |  |
@@ -144,8 +144,9 @@ This solution uses the following modules:
     mgmt_name                       = "checkpoint-mgmt-terraform"
     location                        = "eastus"
     vnet_name                       = "checkpoint-mgmt-vnet"
-    address_space                   = "10.0.0.0/16"
-    subnet_prefix                   = "10.0.0.0/24"
+    vnet_resource_group             = "existing-vnet"
+    management_subnet_name          = "mgmt-subnet"
+    subnet_1st_Address              = "10.0.1.4"
     management_GUI_client_network   = "0.0.0.0/0"
     mgmt_enable_api                 = "disable"
     admin_password                  = "xxxxxxxxxxxx"
@@ -164,6 +165,7 @@ This solution uses the following modules:
     add_storage_account_ip_rules    = false
     storage_account_additional_ips  = []
 
+    
 
 ## Outputs
 
@@ -172,13 +174,11 @@ This solution uses the following modules:
 | resource_group_link      | URL to the created resource group..                    |
 | public_ip                | Public IP address of the VM. |
 | resource_group           | Name of the created resource group.                          |
-| vnet                     | Name of the created vnet.          |
-| subnets                  | IDs of the created subnets.           |
+| subnets                  | IDs of the subnets.           |
 | location                 | Region where the VM is deployed.         |
 | vm_name                  | Name of the VM.          |
 | disk_size                | Disk size.           |
 | os_version               | Version of the GAIA OS.           |
-
 
 ## Revision History
 In order to check the template version refer to the [sk116585](https://supportcenter.checkpoint.com/supportcenter/portal?eventSubmit_doGoviewsolutiondetails=&solutionid=sk116585)
@@ -197,7 +197,7 @@ In order to check the template version refer to the [sk116585](https://supportce
 | | | |
 | 20210309 | - Add "source_image_vhd_uri" variable for using a custom development image |
 | | | |
-| 20210111 | First release of Check Point CloudGuard IaaS Management Terraform deployment into a new Vnet in Azure  |
+| 20210111 | First release of Check Point CloudGuard IaaS Management Terraform deployment into an existing Vnet in Azure  |
 | | | |
 |  | Addition of "templateType" parameter to "cloud-version" files  |
 | | | |
